@@ -80,8 +80,8 @@ int osc_expr_scanner_lex(YYSTYPE * yylval_param, YYLTYPE * yylloc_param , yyscan
 #ifdef __cplusplus
 extern "C"{
 #endif
-t_osc_err osc_expr_parser_parseExpr(char *ptr, t_osc_expr **f);
-t_osc_err osc_expr_parser_parseFunction(char *ptr, t_osc_expr_rec **f);
+t_osc_err osc_expr_parser_parseExpr(const char *ptr, t_osc_expr **f);
+t_osc_err osc_expr_parser_parseFunction(const char *ptr, t_osc_expr_rec **f);
 #ifdef __cplusplus
 }
 #endif
@@ -158,7 +158,7 @@ static void osc_expr_parser_foldConstants(t_osc_expr *expr)
 }
 */
 
-t_osc_err osc_expr_parser_parseExpr(char *ptr, t_osc_expr **f)
+t_osc_err osc_expr_parser_parseExpr(const char *ptr, t_osc_expr **f)
 {
 	//printf("parsing %s\n", ptr);
 	int len = strlen(ptr);
@@ -206,7 +206,7 @@ t_osc_err osc_expr_parser_parseExpr(char *ptr, t_osc_expr **f)
 	return ret;
 }
 
-t_osc_err osc_expr_parser_parseFunction(char *ptr, t_osc_expr_rec **f)
+t_osc_err osc_expr_parser_parseFunction(const char *ptr, t_osc_expr_rec **f)
 {
 	yyscan_t scanner;
 	osc_expr_scanner_lex_init(&scanner);
@@ -270,10 +270,10 @@ void osc_expr_error(YYLTYPE *llocp,
 	char more[256];
 	memset(more, '\0', sizeof(more));
 	int more_len = 0;
-	if(ap){
+	//if(ap != NULL){
 		more_len += vsnprintf(more, 256, moreinfo_fmt, ap);
 		va_end(ap);
-	}
+		//}
 	if(loclen || more_len){
 		char buf[loclen + more_len];
 		char *ptr = buf;

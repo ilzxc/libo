@@ -101,7 +101,7 @@ int _osc_expr_sign(double f);
 t_osc_hashtab *osc_expr_funcobj_ht;
 void osc_expr_funcobj_dtor(char *key, void *val);
 
-extern t_osc_err osc_expr_parser_parseExpr(char *ptr, t_osc_expr **f);
+extern t_osc_err osc_expr_parser_parseExpr(const char *ptr, t_osc_expr **f);
 t_osc_err osc_expr_lex(char *str, t_osc_atom_array_u **ar);
 
 int osc_expr_eval(t_osc_expr *f, long *len, char **oscbndl, t_osc_atom_ar_u **out)
