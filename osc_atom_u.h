@@ -490,6 +490,7 @@ void osc_atom_u_setBndl_u(t_osc_atom_u *a, t_osc_bndl_u *b);
 The #t_osc_bndl_u that bndl points to will not be copied.  The caller is responsible 
 for freeing it.
 
+*/
 
 /** \brief Set the #t_osc_atom_u to a timetag
 

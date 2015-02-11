@@ -130,7 +130,7 @@ char *osc_error_string(t_osc_err err)
 	}
 }
 
-t_osc_err osc_error_bundleSanityCheck(int len, char *bundle)
+t_osc_err osc_error_bundleSanityCheck(int len, const char *bundle)
 {
 	if(!bundle){
 		return OSC_ERR_NOBUNDLE;

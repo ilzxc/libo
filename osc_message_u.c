@@ -1154,7 +1154,7 @@ t_osc_err osc_message_u_setArgArrayCopy(t_osc_msg_u *msg, t_osc_atom_ar_u *ar)
 	return e;
 }
 
-t_osc_msg_u *osc_message_u_allocWithAddress(char *address)
+t_osc_msg_u *osc_message_u_allocWithAddress(const char *address)
 {
 	t_osc_msg_u *m = osc_message_u_alloc();
 	if(m){

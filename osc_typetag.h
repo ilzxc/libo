@@ -52,7 +52,7 @@ enum{
 #define OSC_TYPETAG_ISINT(tt) (tt == 'i' || tt == 'I' || tt == 'h' || tt == 'H' || tt == 'u' || tt == 'U' || tt == 'c' || tt == 'C')
 #define OSC_TYPETAG_ISBOOL(tt) (tt == 'T' || tt == 'F')
 #define OSC_TYPETAG_ISSTRING(tt) (tt == 's')
-#define OSC_TYPETAG_ISNUMERIC(tt) (tt == 'f' || tt == 'd' || tt == 'T' || tt == 'F' ||tt == 'i' || tt == 'I' || tt == 'h' || tt == 'H' || tt == 'u' || tt == 'U' || tt == 'c' || tt == 'C')
+#define OSC_TYPETAG_ISNUMERIC(tt) (tt == 'f' || tt == 'd' || tt == 'i' || tt == 'I' || tt == 'h' || tt == 'H' || tt == 'u' || tt == 'U' || tt == 'c' || tt == 'C')
 
 char *osc_typetag_str(int8_t tt);
 int osc_typetag_compare(char tt1, char tt2);
