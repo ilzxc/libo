@@ -1163,7 +1163,7 @@ t_osc_msg_u *osc_message_u_allocWithAddress(const char *address)
 	return m;
 }
 
-t_osc_msg_u *osc_message_u_allocWithFloat(char *address, float f)
+t_osc_msg_u *osc_message_u_allocWithFloat(const char *address, float f)
 {
 	t_osc_msg_u *m = osc_message_u_allocWithAddress(address);
 	if(m){
@@ -1172,7 +1172,7 @@ t_osc_msg_u *osc_message_u_allocWithFloat(char *address, float f)
 	return m;
 }
 
-t_osc_msg_u *osc_message_u_allocWithString(char *address, char *s)
+t_osc_msg_u *osc_message_u_allocWithString(const char *address, char *s)
 {
 	t_osc_msg_u *m = osc_message_u_allocWithAddress(address);
 	if(m){
@@ -1181,7 +1181,7 @@ t_osc_msg_u *osc_message_u_allocWithString(char *address, char *s)
 	return m;
 }
 
-t_osc_msg_u *osc_message_u_allocWithTimetag(char *address, t_osc_timetag t)
+t_osc_msg_u *osc_message_u_allocWithTimetag(const char *address, t_osc_timetag t)
 {
 	t_osc_msg_u *m = osc_message_u_allocWithAddress(address);
 	if(m){
@@ -1190,7 +1190,7 @@ t_osc_msg_u *osc_message_u_allocWithTimetag(char *address, t_osc_timetag t)
 	return m;
 }
 
-t_osc_msg_u *osc_message_u_allocWithArray(char *address, t_osc_atom_ar_u *ar)
+t_osc_msg_u *osc_message_u_allocWithArray(const char *address, t_osc_atom_ar_u *ar)
 {
 	t_osc_msg_u *m = osc_message_u_allocWithAddress(address);
 	if(m){
@@ -1199,7 +1199,7 @@ t_osc_msg_u *osc_message_u_allocWithArray(char *address, t_osc_atom_ar_u *ar)
 	return m;
 }
 
-t_osc_msg_u *osc_message_u_allocWithBlob(char *address, char *blob)
+t_osc_msg_u *osc_message_u_allocWithBlob(const char *address, char *blob)
 {
 	t_osc_msg_u *m = osc_message_u_allocWithAddress(address);
 	if(m){
@@ -1208,7 +1208,7 @@ t_osc_msg_u *osc_message_u_allocWithBlob(char *address, char *blob)
 	return m;
 }
 
-t_osc_msg_u *osc_message_u_allocWithDouble(char *address, double f)
+t_osc_msg_u *osc_message_u_allocWithDouble(const char *address, double f)
 {
 	t_osc_msg_u *m = osc_message_u_allocWithAddress(address);
 	if(m){
@@ -1217,7 +1217,7 @@ t_osc_msg_u *osc_message_u_allocWithDouble(char *address, double f)
 	return m;
 }
 
-t_osc_msg_u *osc_message_u_allocWithInt(char *address, int i)
+t_osc_msg_u *osc_message_u_allocWithInt(const char *address, int i)
 {
 	t_osc_msg_u *m = osc_message_u_allocWithAddress(address);
 	if(m){
