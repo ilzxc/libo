@@ -146,7 +146,7 @@ t_osc_err osc_bundle_u_getMessagesWithCallback(t_osc_bndl_u *bndl, void (*f)(t_o
 	return OSC_ERR_NONE;
 }
 
-t_osc_err osc_bundle_u_addressExists(t_osc_bndl_u *bndl, char *address, int fullmatch, int *res)
+t_osc_err osc_bundle_u_addressExists(t_osc_bndl_u *bndl, const char *address, int fullmatch, int *res)
 {
 	*res = 0;
 	t_osc_bndl_it_u *it = osc_bndl_it_u_get(bndl);
