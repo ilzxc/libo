@@ -1,6 +1,4 @@
-%module libo
-
-%include "stdint.i"
+%module odot
 
 %{
 #include "osc_match.h"
@@ -34,16 +32,7 @@
 #include "osc_timetag.h"
 #include "osc_serial.h"
 #include "osc.h"
-#include "osc_parser.h"
 %}
-
-//%typemap(out) t_osc_bndl_s* {
-//#ifdef SWIGPYTHON
-//	$result = PyString_FromStringAndSize(osc_bundle_s_getPtr($1), osc_bundle_s_getLen($1));
-//#elif defined(SWIGJAVASCRIPT) || defined(SWIG_JAVASCRIPT_V8)
-
-//#endif
-//}
 
 %include "osc_match.h"
 %include "osc_bundle_s.h"
@@ -76,11 +65,44 @@
 %include "osc_timetag.h"
 %include "osc_serial.h"
 %include "osc.h"
-%include "osc_parser.h"
 %inline %{
-
-PyObject *osc_bundle_s_swugged( t_osc_bundle_s *b ) {
-    return PyString_FromStringAndSize( osc_bundle_s_getPtr(b), osc_bundle_s_getLen(b) );
+t_osc_ar *osc_bundle_s_lookupAddress_r(int len, char *buf, const char *address, int fullmatch)
+{
+	t_osc_ar *ar = NULL;
+	osc_bundle_s_lookupAddress(len, buf, address, &ar, fullmatch);
+	return ar;
 }
 
-%}
+t_osc_ar *osc_bundle_u_lookupAddress_r(t_osc_bndl_u *bndl, const char *address, int fullmatch)
+{
+	t_osc_ar *ar = NULL;
+	osc_bundle_u_lookupAddress(bndl, address, &ar, fullmatch);
+	return ar;
+}
+
+t_osc_bndl_u *osc_bundle_s_deserialize_r(long len, char *ptr)
+{
+	t_osc_bndl_u *bndl = NULL;
+	osc_bundle_s_deserialize(len, ptr, &bndl);
+	return bndl;
+}
+
+t_osc_msg_s *void_to_osc_message_s(void *p)
+{
+	return (t_osc_msg_s *)p;
+}
+
+t_osc_msg_u *void_to_osc_message_u(void *p)
+{
+	return (t_osc_msg_u *)p;
+}
+
+t_osc_atom_u *osc_message_u_getArg_r(t_osc_msg_u *m, int n)
+{
+	t_osc_atom_u *a = NULL;
+	osc_message_u_getArg(m, n, &a);
+	return a;
+}
+
+ %}
+	 //extern t_osc_msg_s *void_to_osc_message_s(void *p);

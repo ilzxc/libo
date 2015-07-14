@@ -65,7 +65,7 @@ void osc_atom_u_free(t_osc_atom_u *a)
 	osc_mem_free(a);
 }
 
-void osc_atom_u_copy(t_osc_atom_u **dest, t_osc_atom_u *src)
+void osc_atom_u_copyInto(t_osc_atom_u **dest, t_osc_atom_u *src)
 {
 	if(!src){
 		return;
@@ -94,6 +94,13 @@ void osc_atom_u_copy(t_osc_atom_u **dest, t_osc_atom_u *src)
 		aa->w = src->w;
 	}
 	*dest = aa;
+}
+
+t_osc_atom_u *osc_atom_u_copy(t_osc_atom_u *src)
+{
+	t_osc_atom_u *dest = NULL;
+	osc_atom_u_copyInto(&dest, src);
+	return dest;
 }
 
 void osc_atom_u_setShouldFreePtr(t_osc_atom_u *a, int bool)
@@ -684,7 +691,7 @@ int osc_atom_u_getInt(t_osc_atom_u *a){
 char *osc_atom_u_getStringPtr(t_osc_atom_u *a)
 {
 	if(!a){
-		return '\0';
+		return NULL;
 	}
 	if(a->typetag == 's'){
 		return a->w.s;
@@ -879,12 +886,9 @@ int32_t osc_atom_u_getBlobLen(t_osc_atom_u *a)
 		}
 	case OSC_BUNDLE_TYPETAG:
 		{
-			long len = 0;
-			char *buf = NULL;
-			osc_bundle_u_serialize(a->w.bndl, &len, &buf);
-			if(buf){
-				osc_mem_free(buf);
-			}
+			t_osc_bndl_s *bs = osc_bundle_u_serialize(a->w.bndl);
+			long len = osc_bundle_s_getLen(bs);
+			osc_bundle_s_deepFree(bs);
 			return len;
 		}
 	case 's':
@@ -970,16 +974,13 @@ void osc_atom_u_getBlobCopy(t_osc_atom_u *a, int32_t *buflen, char **blob)
 		break;
 	case OSC_BUNDLE_TYPETAG:
 		{
-			// this is to avoid a possible realloc that could happen during serialization.
-			// currently, the serialization algorithm doesn't precompute sizes and so 
-			// reallocs aggressively. 
-			long l = 0;
-			char *bndl = NULL;
-			osc_bundle_u_serialize(a->w.bndl, &l, &bndl);
-			if(bndl){
+			t_osc_bndl_s *bs = osc_bundle_u_serialize(a->w.bndl);
+			if(bs){
+				long l = osc_bundle_s_getLen(bs);
+				char *bndl = osc_bundle_s_getPtr(bs);
 				*((int32_t *)(*blob)) = hton32(l);
 				memcpy((*blob) + 4, bndl, l);
-				osc_mem_free(bndl);
+				osc_bundle_s_deepFree(bs);
 			}
 		}
 		break;
@@ -1177,8 +1178,7 @@ void osc_atom_u_setBndl_s(t_osc_atom_u *a, long len, char *ptr)
 		return;
 	}
 	osc_atom_u_clear(a);
-	t_osc_bndl_u *b = NULL;
-	osc_bundle_s_deserialize(len, ptr, &b);
+	t_osc_bndl_u *b = osc_bundle_s_deserialize(len, ptr);
 	osc_atom_u_setBndl_u(a, b);
 /*
 	char *copy = osc_mem_alloc(len);
@@ -1404,12 +1404,33 @@ size_t osc_atom_u_nserialize(char *buf, size_t n, t_osc_atom_u *a)
 	return 0;
 }
 
-t_osc_err osc_atom_u_serialize(t_osc_atom_u *a, long *buflen, char **buf)
+long osc_atom_u_getSerializedSize(t_osc_atom_u *a)
+{
+	return osc_atom_u_nserialize(NULL, 0, a);
+}
+
+t_osc_atom_s *osc_atom_u_serialize(t_osc_atom_u *a)
 {
 	size_t n = osc_atom_u_nserialize(NULL, 0, a);
-	*buf = osc_mem_alloc(n);
-	*buflen = osc_atom_u_nserialize(*buf, n, a);
-	return OSC_ERR_NONE;
+	char *buf = osc_mem_alloc(n);
+	osc_atom_u_nserialize(buf, n, a);
+	return osc_atom_s_alloc(osc_atom_u_getTypetag(a), buf);
+}
+
+long osc_atom_u_getFormattedSize(t_osc_atom_u *a)
+{
+	return osc_atom_u_nformat(NULL, 0, a, 0);
+}
+
+char *osc_atom_u_format(t_osc_atom_u *a)
+{
+	if(!a){
+		return NULL;
+	}
+	long len = osc_atom_u_nformat(NULL, 0, a, 0) + 1;
+	char *buf = osc_mem_alloc(len);
+	osc_atom_u_nformat(buf, len, a, 0);
+	return buf;
 }
 
 long osc_atom_u_nformat(char *buf, long n, t_osc_atom_u *a, int nindent)
@@ -1420,7 +1441,7 @@ long osc_atom_u_nformat(char *buf, long n, t_osc_atom_u *a, int nindent)
 	char tt = osc_atom_u_getTypetag(a);
 	if(!buf){
 		if(tt == OSC_BUNDLE_TYPETAG){
-			return osc_bundle_u_formatNestedBndl(NULL, 0, a->w.bndl, nindent + 1);
+			return osc_bundle_u_nformatNestedBndl(NULL, 0, a->w.bndl, nindent + 1);
 		}else if(tt == 's'){
 			return osc_strfmt_quotedStringWithQuotedMeta(NULL, 0, osc_atom_u_getStringPtr(a));
 		}else{
@@ -1428,7 +1449,7 @@ long osc_atom_u_nformat(char *buf, long n, t_osc_atom_u *a, int nindent)
 		}
 	}else{
 		if(tt == OSC_BUNDLE_TYPETAG){
-			return osc_bundle_u_formatNestedBndl(buf, n, a->w.bndl, nindent + 1);
+			return osc_bundle_u_nformatNestedBndl(buf, n, a->w.bndl, nindent + 1);
 		}else if(tt == 's'){
 			return osc_strfmt_quotedStringWithQuotedMeta(buf, n, osc_atom_u_getStringPtr(a));
 		}else{

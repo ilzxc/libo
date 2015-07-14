@@ -9,8 +9,9 @@
 #include <arpa/inet.h>
 #endif
 */
-#include <time.h>
+#define __USE_BSD
 #include <sys/time.h>
+#include <time.h>
 
 // crossplatform gettimeofday
 //#include "contrib/timeval.h"
@@ -23,6 +24,7 @@
 #include "osc_byteorder.h"
 #include "osc_timetag.h"
 #include "osc_strfmt.h"
+#include "osc_mem.h"
 
 void osc_timetag_ut_to_ntp(time_t ut, t_osc_timetag_ntptime *n);
 time_t osc_timetag_ntp_to_ut(t_osc_timetag_ntptime n);
@@ -317,17 +319,24 @@ long osc_timetag_toISO8601(char *buf, long n, t_osc_timetag timetag)
 	//secs = abs(secs);
 	for(year = 0; secs >= SEC_PER_YEAR; year++){ //determine # years elapse since epoch
 		secs -= SEC_PER_YEAR;
+		if(osc_timetag_isleap(year)){
+			secs -= SEC_PER_DAY;
+		}
 	}
 	//year+=1970;  //1/1/1970, 00:00 is epoch
 	year += 1900;  //1/1/1900, 00:00 is ntp epoch
 	//for (yrcount=1970;yrcount<year;yrcount++) //scroll from 1970 to last year to find leap yrs.
+	/*
 	for(yrcount = 1900; yrcount < year; yrcount++){
 		leap = osc_timetag_isleap(yrcount);  
 		if(leap == 1){
 			secs -= SEC_PER_DAY;  //if it's a leap year, subtract a day's worth of seconds
 		}
 	} 
+	*/
 	leap = osc_timetag_isleap(year); //Is this a leap year?
+
+
 	for(day = 1; secs >= SEC_PER_DAY; day++){ //determine # days elapsed in current year
 		secs -= SEC_PER_DAY;
 	}
@@ -615,8 +624,15 @@ void osc_timetag_toBytes(t_osc_timetag t, char *ptr)
 #endif
 }
 
-//int osc_timetag_format(t_osc_timetag t, char *buf)
-long osc_timetag_format(char *buf, long n, t_osc_timetag t)
+char *osc_timetag_format(t_osc_timetag t)
+{
+	long l = osc_timetag_nformat(NULL, 0, t) + 1;
+	char *buf = osc_mem_alloc(l);
+	osc_timetag_nformat(buf, l, t);
+	return buf;
+}
+
+long osc_timetag_nformat(char *buf, long n, t_osc_timetag t)
 {
 	return osc_timetag_toISO8601(buf, n, t);
 }

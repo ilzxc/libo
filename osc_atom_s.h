@@ -99,8 +99,8 @@ int osc_atom_s_getInt(t_osc_atom_s *a);
 int osc_atom_s_getStringLen(t_osc_atom_s *a);
 int osc_atom_s_getString(t_osc_atom_s *a, size_t n, char **out);
 int osc_atom_s_getBool(t_osc_atom_s *a);
-t_osc_err osc_atom_s_getBndl(t_osc_bndl_s **b, t_osc_atom_s *a);
-t_osc_err osc_atom_s_getBndlCopy(t_osc_bndl_s **b, t_osc_atom_s *a);
+t_osc_bndl_s *osc_atom_s_getBndl(t_osc_atom_s *a);
+t_osc_bndl_s *osc_atom_s_getBndlCopy(t_osc_atom_s *a);
 t_osc_timetag osc_atom_s_getTimetag(t_osc_atom_s *a);
 int32_t osc_atom_s_getBlobLen(t_osc_atom_s *a);
 char *osc_atom_s_getBlob(t_osc_atom_s *a);
@@ -124,8 +124,10 @@ void osc_atom_s_setTimetag(t_osc_atom_s *a, t_osc_timetag t);
 
 void osc_atom_s_negate(t_osc_atom_s *a);
 size_t osc_atom_s_sizeof(t_osc_atom_s *a);
-t_osc_err osc_atom_s_deserialize(t_osc_atom_s *a, t_osc_atom_u **a_u);
-OSC_DEPRECATED(t_osc_err osc_atom_s_format(t_osc_atom_s *a, long *buflen, char **buf), "use osc_atom_s_nformat() instead.");
+void osc_atom_s_deserializeInto(t_osc_atom_u **dest, t_osc_atom_s *src);
+t_osc_atom_u *osc_atom_s_deserialize(t_osc_atom_s *a);
+long osc_atom_s_getFormattedSize(t_osc_atom_s *a);
+char *osc_atom_s_format(t_osc_atom_s *a);
 long osc_atom_s_nformat(char *buf, long n, t_osc_atom_s *a, int nindent);
 
 #ifdef __cplusplus

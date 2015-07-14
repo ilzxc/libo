@@ -34,10 +34,6 @@ Audio Technologies, University of California, Berkeley.
 #ifndef __OSC_TIMETAG_H__
 #define __OSC_TIMETAG_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 //#define OSC_TIMETAG_MSGSIZE_NTP 32
@@ -73,7 +69,8 @@ typedef t_osc_timetag_ntptime t_osc_timetag;
 
 // conversions 
 void osc_timetag_fromISO8601(char *s, t_osc_timetag *t);
-long osc_timetag_format(char *buf, long n, t_osc_timetag t);
+char *osc_timetag_format(t_osc_timetag t);
+long osc_timetag_nformat(char *buf, long n, t_osc_timetag t);
 
 // operations
 t_osc_timetag osc_timetag_add(t_osc_timetag t1, t_osc_timetag t2);
@@ -93,10 +90,6 @@ void osc_timetag_encodeForHeader(t_osc_timetag t, char *buf);
 
 uint32_t osc_timetag_ntp_getSeconds(t_osc_timetag t);
 uint32_t osc_timetag_ntp_getFraction(t_osc_timetag t);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

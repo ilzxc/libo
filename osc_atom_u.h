@@ -22,72 +22,6 @@ MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 /** 	\file osc_atom_u.h
 	\author John MacCallum
-
-\brief Basic polymorphic data type for representing unserialized arguments in an OSC message.
-
-osc_atom_u.h provides a basic polymorphic data type (#t_osc_atom_u) useful for  representing
-the arguments in an unserialized OSC message (#t_osc_msg_u).  #t_osc_atom_u is useful for
-building up an OSC bundle (#t_osc_bndl_u) programatically:
-
-\code
-#include <stdio.h>
-#include <inttypes.h>
-#include "osc.h"
-#include "osc_error.h"
-#include "osc_bundle_u.h"
-#include "osc_message_u.h"
-#include "osc_atom_u.h"
-
-int main(int argc, char **argv){
-	t_osc_bndl_u *b = osc_bundle_u_alloc();
-	t_osc_msg_u *m = osc_message_u_alloc();
-	t_osc_err e = osc_message_u_setAddress(m, "/foo");
-	if(e){
-		fprintf(stderr, "%s (%"PRIu64"\n", osc_error_string(e), (uint64_t)e);
-		return 1;
-	}
-	t_osc_atom_u *a1 = osc_atom_u_alloc();
-	osc_atom_u_setDouble(a1, 66.6);
-	osc_message_u_appendAtom(m, a1);
-
-	t_osc_atom_u *a2 = osc_atom_u_alloc();
-	osc_atom_u_setTrue(a2);
-	osc_message_u_appendAtom(m, a2);
-
-	osc_bundle_u_addMsg(b, m);
-
-	char *fmt = NULL;
-	long len = 0;
-	osc_bundle_u_format(b, &len, &fmt);
-	if(fmt){
-		printf("%s", fmt);
-		osc_mem_free(fmt);
-	}
-	osc_bundle_u_free(b); // this will free all #t_osc_msg_u and #t_osc_atom_u objects added to it
-	
-	return 0;
-}
-\endcode
-
-
-
-Currently, it supports the following types:
-
-<table>
-<tr><th>Description</th><th>C Data type</th><th>OSC typetag</th></tr>
-<tr><td>64-bit (double) precision floating point</td><td>double</td><td>d</td></tr>
-<tr><td>32-bit (single) precision floating point</td><td>float</td><td>f</td></tr>
-<tr><td>Signed 32-bit integer</td><td>int32_t</td><td>i</td></tr>
-<tr><td>Unsigned 32-bit integer</td><td>uint32_t</td><td>h</td></tr>
-<tr><td>Signed 64-bit integer</td><td>int64_t</td><td>I</td></tr>
-<tr><td>Unsigned 64-bit integer</td><td>uint64_t</td><td>H</td></tr>
-<tr><td>String</td><td>char *</td><td>s</td></tr>
-<tr><td>True</td><td>\<none\></td><td>T</td></tr>
-<tr><td>False</td><td>\<none\></td><td>F</td></tr>
-<tr><td>Null</td><td>\<none\></td><td>N</td></tr>
-<tr><td>OSC bundle (nested)</td><td>char *</td><td>#</td></tr>
-</table>
-
 */
 
 #ifndef __OSC_ATOM_U_H__
@@ -108,9 +42,9 @@ typedef struct _osc_atom_u t_osc_atom_u;
 #include "osc_error.h"
 #include "osc_bundle_s.h"
 #include "osc_bundle_u.h"
-#include "osc_atom_u.h"
 #include "osc_array.h"
 #include "osc_timetag.h"
+#include "osc_atom_s.h"
 
 /** \brief Allocate a #t_osc_atom_u
 
@@ -138,7 +72,8 @@ If dest is NULL, a new #t_osc_atom_u will be allocated, but
 if dest is non-NULL, no new memory will be allocated
 no new memory will be allocated.
  */
-void osc_atom_u_copy(t_osc_atom_u **dest, t_osc_atom_u *src);
+void osc_atom_u_copyInto(t_osc_atom_u **dest, t_osc_atom_u *src);
+t_osc_atom_u *osc_atom_u_copy(t_osc_atom_u *src);
 
 /** \brief Set whether or not the data that this atom points to should be freed with the atom
 
@@ -485,18 +420,6 @@ void osc_atom_u_setBndl(t_osc_atom_u *a, long len, char *ptr);
 void osc_atom_u_setBndl_s(t_osc_atom_u *a, long len, char *ptr);
 void osc_atom_u_setBndl_u(t_osc_atom_u *a, t_osc_bndl_u *b);
 
-/** \brief Set the #t_osc_atom_u to point to a(n unserialized) #t_osc_bndl_u.
-
-The #t_osc_bndl_u that bndl points to will not be copied.  The caller is responsible 
-for freeing it.
-
-*/
-
-/** \brief Set the #t_osc_atom_u to a timetag
-
-\param a The #t_osc_atom_u
-\param timetag The timetag
-*/
 void osc_atom_u_setTimetag(t_osc_atom_u *a, t_osc_timetag timetag);
 
 void osc_atom_u_setBlob(t_osc_atom_u *a, char *blob);
@@ -516,8 +439,6 @@ size_t osc_atom_u_sizeof(t_osc_atom_u *a);
 
 void osc_atom_u_negate(t_osc_atom_u *a);
 
-size_t osc_atom_u_nserialize(char *buf, size_t n, t_osc_atom_u *a);
-
 /** \brief Serialize a #t_osc_atom_u
 
 This function will convert the contents of a #t_osc_atom_u to a byte array suitable
@@ -531,7 +452,9 @@ one will be created and must be freed by the caller using #osc_mem_free().
 
 \return An error or #OSC_ERR_NONE
  */
-t_osc_err osc_atom_u_serialize(t_osc_atom_u *a, long *buflen, char **buf);
+long osc_atom_u_getSerializedSize(t_osc_atom_u *a);
+t_osc_atom_s *osc_atom_u_serialize(t_osc_atom_u *a);
+size_t osc_atom_u_nserialize(char *buf, size_t n, t_osc_atom_u *a);
 
 /** \brief Format a #t_osc_atom_u for display.
 
@@ -545,7 +468,8 @@ one will be created and must be freed by the caller using #osc_mem_free().
 
 \return An error or #OSC_ERR_NONE
 */
-
+long osc_atom_u_getFormattedSize(t_osc_atom_u *a);
+char *osc_atom_u_format(t_osc_atom_u *a);
 long osc_atom_u_nformat(char *buf, long n, t_osc_atom_u *a, int nindent);
 
 t_osc_atom_u *osc_atom_u_allocWithString(char *string);

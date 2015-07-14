@@ -616,39 +616,29 @@ int osc_atom_s_getBool(t_osc_atom_s *a)
 	return 0;
 }
 
-t_osc_err osc_atom_s_getBndl(t_osc_bndl_s **b, t_osc_atom_s *a)
+t_osc_bndl_s *osc_atom_s_getBndl(t_osc_atom_s *a)
 {
-	if(!a){
-		return OSC_ERR_INVAL;
-	}
-	if(a->typetag != OSC_BUNDLE_TYPETAG){
-		return OSC_ERR_BADTYPETAG;
-	}
-	if(!(a->data)){
-		return OSC_ERR_NOBUNDLE;
+	if(!a || a->typetag != OSC_BUNDLE_TYPETAG || !(a->data)){
+		return NULL;
 	}
 	uint32_t len = ntoh32(*((uint32_t *)a->data));
 	char *ptr = a->data + 4;
-	if(!(*b)){
-		*b = osc_bundle_s_alloc(len, ptr);
-	}else{
-		osc_bundle_s_setLen(*b, len);
-		osc_bundle_s_setPtr(*b, ptr);
-	}
-	return OSC_ERR_NONE;
+	return osc_bundle_s_alloc(len, ptr);
 }
 
-t_osc_err osc_atom_s_getBndlCopy(t_osc_bndl_s **b, t_osc_atom_s *a)
+t_osc_bndl_s *osc_atom_s_getBndlCopy(t_osc_atom_s *a)
 {
-	t_osc_err e = osc_atom_s_getBndl(b, a);
-	if(e){
-		return e;
+	if(!a || a->typetag != OSC_BUNDLE_TYPETAG || !(a->data)){
+		return NULL;
 	}
-	long len = osc_bundle_s_getLen(*b);
-	char *ptr = osc_mem_alloc(len);
-	memcpy(ptr, osc_bundle_s_getPtr(*b), len);
-	osc_bundle_s_setPtr(*b, ptr);
-	return OSC_ERR_NONE;
+	uint32_t len = ntoh32(*((uint32_t *)a->data));
+	if(len > 0){
+		char *ptr = osc_mem_alloc(len + 4);
+		memcpy(ptr, a->data, len + 4);
+		return osc_bundle_s_alloc(len, ptr);
+	}else{
+		return NULL;
+	}
 }
 
 t_osc_timetag osc_atom_s_getTimetag(t_osc_atom_s *a)
@@ -936,18 +926,16 @@ size_t osc_atom_s_sizeof(t_osc_atom_s *a)
 	return osc_sizeof(a->typetag, a->data);
 }
 
-t_osc_err osc_atom_s_deserialize(t_osc_atom_s *a, t_osc_atom_u **a_u)
+void osc_atom_s_deserializeInto(t_osc_atom_u **dest, t_osc_atom_s *src)
 {
-	if(!a){
-		return OSC_ERR_INVAL;
+	if(!src || !dest){
+		return;
 	}
-	t_osc_atom_u *atom_u = NULL;
-	if(!(*a_u)){
-		atom_u = osc_atom_u_alloc();
-	}else{
-		atom_u = *a_u;
+	if(!(*dest)){
+		*dest = osc_atom_u_alloc();
 	}
-
+	t_osc_atom_u *atom_u = *dest;
+	t_osc_atom_s *a = src;
 	switch(osc_atom_s_getTypetag(a)){
 	case 'i':
 		osc_atom_u_setInt32(atom_u, osc_atom_s_getInt32(a));
@@ -998,11 +986,12 @@ t_osc_err osc_atom_s_deserialize(t_osc_atom_s *a, t_osc_atom_u **a_u)
 		break;
 	case OSC_BUNDLE_TYPETAG:
 		{
-			char bndl[osc_bundle_s_getStructSize()];
-			t_osc_bndl_s *b = (t_osc_bndl_s *)bndl;
-			osc_atom_s_getBndl(&b, a);
+			//char bndl[osc_bundle_s_getStructSize()];
+			//t_osc_bndl_s *b = (t_osc_bndl_s *)bndl;
+			t_osc_bndl_s *b = osc_atom_s_getBndl(a);
 			if(b){
 				osc_atom_u_setBndl(atom_u, osc_bundle_s_getLen(b), osc_bundle_s_getPtr(b));
+				osc_bundle_s_free(b);
 			}
 		}
 		break;
@@ -1014,75 +1003,30 @@ t_osc_err osc_atom_s_deserialize(t_osc_atom_s *a, t_osc_atom_u **a_u)
 	case 'b':
 		osc_atom_u_setBlob(atom_u, a->data);
 		break;
-	}
-	*a_u = atom_u;
-	return OSC_ERR_NONE;
+	}	
 }
 
-t_osc_err osc_atom_s_doFormat(t_osc_atom_s *a, long *buflen, long *bufpos, char **buf)
+t_osc_atom_u *osc_atom_s_deserialize(t_osc_atom_s *a)
 {
-	if(!a){
-		return OSC_ERR_NOBUNDLE;
-	}
-	if(osc_atom_s_getTypetag(a) == OSC_BUNDLE_TYPETAG){
-		char *data = osc_atom_s_getData(a);
-		int n = ntoh32(*((uint32_t *)data)) + 32;
-		if((*buflen - *bufpos) < n){
-			*buf = osc_mem_resize(*buf, *buflen + n);
-			if(!(*buf)){
-				return OSC_ERR_OUTOFMEM;
-			}
-			*buflen += n;
-		}
-		*bufpos += sprintf(*buf + *bufpos, "[\n");
-		extern t_osc_err osc_bundle_s_doFormat(long len, char *bndl, long *buflen, long *bufpos, char **buf);
-		osc_bundle_s_doFormat(ntoh32(*((uint32_t *)data)), data + 4, buflen, bufpos, buf);
-		*bufpos += sprintf(*buf + *bufpos, "]");
-		//}else if(osc_atom_s_getTypetag(a) == OSC_TIMETAG_TYPETAG){
-		//*bufpos += sprintf(*buf + *bufpos, "timetag");
-		//*bufpos += osc_timetag_format(*((t_osc_timetag *)osc_atom_s_getData(a)), *buf + *bufpos);
-	}else if(osc_atom_s_getTypetag(a) == 's'){
-		char *stringptr = osc_atom_s_getData(a);
-		int stringlen = strlen(stringptr);
-
-		int n = stringlen + 4 + osc_strfmt_countMeta(stringlen, stringptr);
-		if((*buflen - *bufpos) < n){
-			*buf = osc_mem_resize(*buf, *buflen + n);
-			if(!(*buf)){
-				return OSC_ERR_OUTOFMEM;
-			}
-			*buflen += n;
-		}
-		char *b = *buf + *bufpos;
-		(*bufpos) += osc_strfmt_addQuotesAndQuoteMeta(stringlen, stringptr, &b);
-		(*buf)[(*bufpos)++] = ' ';
-		(*buf)[(*bufpos)] = '\0';
-	}else{
-		int n = osc_atom_s_getStringLen(a) + 2; // space and null byte
-		if((*buflen - *bufpos) < n){
-			*buf = osc_mem_resize(*buf, *buflen + n);
-			if(!(*buf)){
-				return OSC_ERR_OUTOFMEM;
-			}
-			*buflen += n;
-		}
-		char *b = *buf + *bufpos;
-		(*bufpos) += osc_atom_s_getString(a, *buflen - *bufpos, &b);
-		(*buf)[(*bufpos)++] = ' ';
-		(*buf)[(*bufpos)] = '\0';
-	}
-	return OSC_ERR_NONE;
+	t_osc_atom_u *atom_u = NULL;
+	osc_atom_s_deserializeInto(&atom_u, a);
+	return atom_u;
 }
 
-t_osc_err osc_atom_s_format(t_osc_atom_s *a, long *buflen, char **buf)
+long osc_atom_s_getFormattedSize(t_osc_atom_s *a)
+{
+	return osc_atom_s_nformat(NULL, 0, a, 0);
+}
+
+char *osc_atom_s_format(t_osc_atom_s *a)
 {
 	if(!a){
-		return OSC_ERR_INVAL;
+		return NULL;
 	}
-	long mybuflen = 0, mybufpos = 0;
-	t_osc_err e = osc_atom_s_doFormat(a, &mybuflen, &mybufpos, buf);
-	*buflen = mybufpos;
-	return e;
+	long len = osc_atom_s_nformat(NULL, 0, a, 0) + 1;
+	char *buf = osc_mem_alloc(len);
+	osc_atom_s_nformat(buf, len, a, 0);
+	return buf;
 }
 
 long osc_atom_s_nformat(char *buf, long n, t_osc_atom_s *a, int nindent)
@@ -1094,7 +1038,7 @@ long osc_atom_s_nformat(char *buf, long n, t_osc_atom_s *a, int nindent)
 	if(!buf){
 		if(tt == OSC_BUNDLE_TYPETAG){
 			char *data = osc_atom_s_getData(a);
-			return osc_bundle_s_formatNestedBndl(NULL, 0, ntoh32(*((uint32_t *)data)), data + 4, nindent + 1);
+			return osc_bundle_s_nformatNestedBndl(NULL, 0, ntoh32(*((uint32_t *)data)), data + 4, nindent + 1);
 		}else if(tt == 's'){
 			return osc_strfmt_quotedStringWithQuotedMeta(NULL, 0, osc_atom_s_getData(a));
 		}else{
@@ -1103,7 +1047,7 @@ long osc_atom_s_nformat(char *buf, long n, t_osc_atom_s *a, int nindent)
 	}else{
 		if(tt == OSC_BUNDLE_TYPETAG){
 			char *data = osc_atom_s_getData(a);
-			return osc_bundle_s_formatNestedBndl(buf, n, ntoh32(*((uint32_t *)data)), data + 4, nindent + 1);
+			return osc_bundle_s_nformatNestedBndl(buf, n, ntoh32(*((uint32_t *)data)), data + 4, nindent + 1);
 		}else if(tt == 's'){
 			return osc_strfmt_quotedStringWithQuotedMeta(buf, n, osc_atom_s_getData(a));
 		}else{

@@ -25,12 +25,13 @@
 #include <string.h>
 #include <inttypes.h>
 #include "osc.h"
-#include "osc_message_s.h"
 #include "osc_message_s.r"
-#include "osc_message_u.h"
+#include "osc_message_s.h"
 #include "osc_message_iterator_s.h"
+#include "osc_message_u.h"
 #include "osc_array.h"
 #include "osc_mem.h"
+#include "osc_util.h"
 
 t_osc_msg_s *osc_message_s_alloc(void)
 {
@@ -92,27 +93,35 @@ t_osc_err osc_message_s_wrap(t_osc_msg_s *m, char *bytes)
 	}
 	int32_t len = ntoh32(*((int32_t *)bytes));
 	m->size = bytes;
-	m->address = bytes + 4;
+	char *address = m->address = bytes + 4;
+	/*
 	if(!(m->address)){
 		return OSC_ERR_MALFORMEDADDRESS;
 	}
 	if(m->address[0] != '/'){
 		return OSC_ERR_MALFORMEDADDRESS;
 	}
+	*/
+	/*
 	m->typetags = bytes + 4 + strlen(bytes + 4) + 1;
 	while((m->typetags - bytes) % 4){
 		m->typetags++;
 	}
-	if((m->typetags - bytes) > len){
+	*/
+	char *tt = m->typetags = address + osc_util_getPaddedStringLen(address);
+	if((tt - bytes) > len){
 		m->typetags = NULL;
 		// this isn't really cool--if there is no data, there should at least be a 
 		// comma and 3 NULLs.  we'll let it go anyway...
 		return OSC_ERR_NONE;
 	}
+	/*
 	m->data = m->typetags + strlen(m->typetags) + 1;
 	while((m->data - bytes) % 4){
 		m->data++;
 	}
+	*/
+	m->data = tt + osc_util_getPaddedStringLen(tt);
 	return OSC_ERR_NONE;
 }
 
@@ -241,7 +250,8 @@ void osc_message_s_getArg(t_osc_msg_s *m, int n, t_osc_atom_s **atom){
 	}
 }
 
-t_osc_err osc_message_s_cacheDataOffsets(t_osc_msg_s *m){
+t_osc_err osc_message_s_cacheDataOffsets(t_osc_msg_s *m)
+{
 	int n = osc_message_s_getArgCount(m);
 	m->data_offset_cache = (int *)osc_mem_alloc(n * sizeof(int));
 	m->data_size_cache = (int *)osc_mem_alloc(n * sizeof(int));
@@ -258,100 +268,34 @@ t_osc_err osc_message_s_cacheDataOffsets(t_osc_msg_s *m){
 	return OSC_ERR_NONE;
 }
 
-t_osc_err osc_message_s_deserialize(t_osc_msg_s *msg, t_osc_msg_u **msg_u){
+t_osc_msg_u *osc_message_s_deserialize(t_osc_msg_s *msg)
+{
 	t_osc_msg_u *m = osc_message_u_alloc();
 	osc_message_u_setAddress(m, osc_message_s_getAddress(msg));
 	t_osc_msg_it_s *it = osc_msg_it_s_get(msg);
 	while(osc_msg_it_s_hasNext(it)){
 		t_osc_atom_s *a = osc_msg_it_s_next(it);
-		t_osc_atom_u *ua = NULL;
-		osc_atom_s_deserialize(a, &ua);
+		t_osc_atom_u *ua = osc_atom_s_deserialize(a);
 		osc_message_u_appendAtom(m, ua);
 	}
 	osc_msg_it_s_destroy(it);
-	*msg_u = m;
-	return OSC_ERR_NONE;
+	return m;
 }
 
-extern t_osc_err osc_atom_s_doFormat(t_osc_atom_s *a, long *buflen, long *bufpos, char **buf);
-t_osc_err osc_message_s_doFormat(t_osc_msg_s *m, long *buflen, long *bufpos, char **buf);
-t_osc_err osc_message_s_doFormatArgs(t_osc_msg_s *m, long *buflen, long *bufpos, char **buf, int offset);
-
-t_osc_err osc_message_s_format(t_osc_msg_s *m, long *buflen, char **buf)
+long osc_message_s_getFormattedSize(t_osc_msg_s *m)
 {
-	long bufpos = 0, bl = 0;
-	t_osc_err e = osc_message_s_doFormat(m, &bl, &bufpos, buf);
-	*buflen = bufpos;
-	return e;
+	return osc_message_s_nformat(NULL, 0, m, 0);
 }
 
-t_osc_err osc_message_s_formatArgs(t_osc_msg_s *m, long *buflen, char **buf, int offset)
+char *osc_message_s_format(t_osc_msg_s *m)
 {
-	long bufpos = 0, bl = 0;
-	t_osc_err e = osc_message_s_doFormatArgs(m, &bl, &bufpos, buf, offset);
-	*buflen = bufpos;
-	return e;
-}
-
-t_osc_err osc_message_s_doFormatArgs(t_osc_msg_s *m, long *buflen, long *bufpos, char **buf, int offset)
-{
-	t_osc_msg_it_s *it = osc_msg_it_s_get(m);
-	int i = 0;
-	while(osc_msg_it_s_hasNext(it)){
-		t_osc_atom_s *a = osc_msg_it_s_next(it);
-		if(i < offset){
-			i++;
-			continue;
-		}
-		if((*buflen - *bufpos) < 256){
-			*buf = osc_mem_resize(*buf, *buflen + 1024);
-			if(!(*buf)){
-				return OSC_ERR_OUTOFMEM;
-			}
-			*buflen += 1024;
-		}
-		t_osc_err e = osc_atom_s_doFormat(a, buflen, bufpos, buf);
-		if(e){
-			return e;
-		}
+	if(!m){
+		return NULL;
 	}
-	osc_msg_it_s_destroy(it);
-	return OSC_ERR_NONE;
-}
-
-t_osc_err osc_message_s_doFormat(t_osc_msg_s *m, long *buflen, long *bufpos, char **buf)
-{
-	if((*buflen - *bufpos) < 256){
-		*buf = osc_mem_resize(*buf, *buflen + 1024);
-		if(!(*buf)){
-			return OSC_ERR_OUTOFMEM;
-		}
-		*buflen += 1024;
-	}
-	*bufpos += sprintf(*buf + *bufpos, "%s ", osc_message_s_getAddress(m));
-	/*
-	t_osc_msg_it_s *it = osc_msg_it_s_get(m);
-	while(osc_msg_it_s_hasNext(it)){
-		t_osc_atom_s *a = osc_msg_it_s_next(it);
-		if((*buflen - *bufpos) < 256){
-			*buf = osc_mem_resize(*buf, *buflen + 1024);
-			if(!(*buf)){
-				return OSC_ERR_OUTOFMEM;
-			}
-			*buflen += 1024;
-		}
-		t_osc_err e = osc_atom_s_doFormat(a, buflen, bufpos, buf);
-		if(e){
-			return e;
-		}
-	}
-	osc_msg_it_s_destroy(it);
-	*/
-	t_osc_err e = osc_message_s_doFormatArgs(m, buflen, bufpos, buf, 0);
-	if(e){
-		return e;
-	}
-	return OSC_ERR_NONE;
+	long len = osc_message_s_nformat(NULL, 0, m, 0) + 1;
+	char *buf = osc_mem_alloc(len);
+	osc_message_s_nformat(buf, len, m, 0);
+	return buf;
 }
 
 long osc_message_s_nformat(char *buf, long n, t_osc_msg_s *m, int nindent)
@@ -424,6 +368,36 @@ long osc_message_s_nformat(char *buf, long n, t_osc_msg_s *m, int nindent)
 	return offset;
 }
 
-t_osc_array *osc_message_array_s_alloc(long len){
-	return osc_array_allocWithSize(len, sizeof(t_osc_msg_s));
+t_osc_message_array_s *osc_message_array_s_alloc(long len){
+	return (t_osc_message_array_s *)osc_array_allocWithSize(len, sizeof(t_osc_msg_s));
+}
+
+void osc_message_array_s_free(t_osc_message_array_s *ar)
+{
+	osc_array_free((t_osc_array *)ar);
+}
+
+void osc_message_array_s_clear(t_osc_message_array_s *ar)
+{
+	osc_array_clear((t_osc_array *)ar);
+}
+
+t_osc_msg_s *osc_message_array_s_get(t_osc_message_array_s *ar, long idx)
+{
+	return (t_osc_msg_s *)osc_array_get((t_osc_array *)ar, idx);
+}
+
+long osc_message_array_s_getLen(t_osc_message_array_s *ar)
+{
+	return osc_array_getLen((t_osc_array *)ar);
+}
+
+t_osc_message_array_s *osc_message_array_s_copy(t_osc_message_array_s *ar)
+{
+	return (t_osc_message_array_s *)osc_array_copy((t_osc_array *)ar);
+}
+
+void osc_message_array_s_resize(t_osc_message_array_s *ar, long newlen)
+{
+	osc_array_resize((t_osc_array *)ar, newlen);
 }

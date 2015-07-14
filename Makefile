@@ -60,10 +60,13 @@ win: $(LIBO_PARSER_CFILES) $(LIBO_SCANNER_CFILES) libo.a
 win: STATIC-LINK = ar cru libo.a $(LIBO_OBJECTS) /usr/lib/libfl.a
 
 linux: CC = clang
+linux: CFLAGS += -std=c99 -fPIC -DLINUX_VERSION -D_XOPEN_SOURCE=500
 linux: $(LIBO_CFILES) $(LIBO_HFILES) $(LIBO_SCANNER_CFILES) $(LIBO_PARSER_CFILES) libo.a
-linux: LIBTOOL = libtool -static -o libo.a $(LIBO_OBJECTS) /usr/lib/libfl.a
+#linux: LIBTOOL = libtool -static -o libo.a $(LIBO_OBJECTS) /usr/lib/libfl.a
+linux: STATIC-LINK = ar cru libo.a $(LIBO_OBJECTS) /usr/lib/libfl.a
 
 swig: CC = clang
+swig: CFLAGS += -std=c99
 swig: libo.i libo_wrap.c libo.py _libo.so
 
 libo_wrap.c libo.py:
@@ -71,6 +74,15 @@ libo_wrap.c libo.py:
 
 _libo.so: libo.py libo_wrap.c setup.py
 	python setup.py build_ext --inplace
+
+node: odot_wrap.cxx build/Release/odot.node
+
+odot_wrap.cxx:
+	swig -javascript -node -c++ odot.i
+
+build/Release/odot.node:
+	node-gyp rebuild
+
 
 # libo.i:
 # 	$(shell echo "%module libo" > libo.i; echo "%{" >> libo.i; for f in $(LIBO_HFILES) osc_scanner.h osc_expr_scanner.h osc_parser.h osc_expr_parser.h; do echo "#include \""$$f"\"" >> libo.i; done; echo "%}" >> libo.i; for f in $(LIBO_HFILES); do echo "%include \""$$f"\"" >> libo.i; done;)
@@ -89,7 +101,7 @@ libo.a: $(LIBO_OBJECTS)
 	rm -f libo.a
 	$(STATIC-LINK)
 
-libo.dylib: $(LIBO_OBJECTS) 
+libo.dylib: $(LIBO_OBJECTS)
 	rm -f libo.dylib
 	$(DYNAMIC-LINK)
 
@@ -123,3 +135,5 @@ clean:
 .PHONY: swig-clean
 swig-clean:
 	rm -rf libo.py libo_wrap.c _libo.so
+node-clean:
+	rm -rf build odot_wrap.cxx

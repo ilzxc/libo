@@ -43,14 +43,18 @@ typedef struct _osc_bundle_s t_osc_bundle_s, t_osc_bndl_s;
 #endif
 
 #include <stdint.h>
-#include "osc_bundle_u.h"
 #include "osc_message_s.h"
+#include "osc_bundle_u.h"
 #include "osc_error.h"
 #include "osc_array.h"
 #include "osc_timetag.h"
 
 #ifdef __WIN32
 #include <malloc.h> // for alloca in the macro below
+#endif
+
+#ifdef LINUX_VERSION
+#include <alloca.h>
 #endif
 
 typedef t_osc_array t_osc_bundle_array_s, t_osc_bndl_ar_s;
@@ -84,8 +88,9 @@ t_osc_err osc_bundle_s_getMessagesWithCallback(int len, char *buf, void (*f)(t_o
 
 t_osc_err osc_bundle_s_addressIsBound(long len, char *buf, char *address, int fullmatch, int *res);
 t_osc_err osc_bundle_s_addressExists(long len, char *buf, char *address, int fullmatch, int *res);
-t_osc_err osc_bundle_s_lookupAddress(int len, char *buf, const char *address, t_osc_array **osc_msg_s_array, int fullmatch);
-t_osc_err osc_bundle_s_lookupAddress_b(t_osc_bndl_s *bndl, const char *address, t_osc_ar **osc_msg_s_array, int fullmatch);
+t_osc_msg_ar_s *osc_bundle_s_lookupAddress(long len, char *buf, const char *address, int fullmatch);
+t_osc_msg_ar_s *osc_bundle_s_lookupAddress_b(t_osc_bndl_s *bndl, const char *address, int fullmatch);
+char *osc_bundle_s_getFirstFullMatch(long len, char *ptr, char *address);
 
 t_osc_err osc_bundle_s_wrapMessage(long len, char *msg, long *bndllen, char **bndl, char *alloc);
 t_osc_err osc_bundle_s_removeMessage(char *address, long *len, char *ptr, int fullmatch);
@@ -107,11 +112,13 @@ t_osc_err osc_bundle_s_flatten(t_osc_bndl_s **dest,
 			       char *sep, 
 			       int remove_enclosing_address_if_empty);
 t_osc_err osc_bundle_s_explode(t_osc_bndl_s **dest, t_osc_bndl_s *src, int maxlevel, char *sep);
-t_osc_err osc_bundle_s_deserialize(long len, char *ptr, t_osc_bndl_u **bndl);
-OSC_DEPRECATED(t_osc_err osc_bundle_s_format(long len, char *bndl, long *buflen, char **buf), "use osc_bundle_s_nformat() instead.");
+t_osc_bndl_u *osc_bundle_s_deserialize(long len, char *ptr);
+long osc_bundle_s_getFormattedSize(long len, char *bndl);
+char *osc_bundle_s_format(long len, char *bndl);
+char *osc_bundle_s_pformat(t_osc_bundle_s *bndl);
 long osc_bundle_s_nformat(char *buf, long n, long bndllen, char *bndl, int nindent);
-long osc_bundle_s_formatNestedBndl(char *buf, long n, long bndllen, char *bndl, int nindent);
-t_osc_err osc_bundle_s_union(long len1, char *bndl1, long len2, char *bndl2, long *len_out, char **bndl_out);
+long osc_bundle_s_nformatNestedBndl(char *buf, long n, long bndllen, char *bndl, int nindent);
+t_osc_bndl_s *osc_bundle_s_union(t_osc_bndl_s *lhs, t_osc_bndl_s *rhs);
 t_osc_err osc_bundle_s_intersection(long len1, char *bndl1, long len2, char *bndl2, long *len_out, char **bndl_out);
 t_osc_err osc_bundle_s_difference(long len1, char *bndl1, long len2, char *bndl2, long *len_out, char **bndl_out);
 // returns len which is len1 + len2 - OSC_HEADER_SIZE
@@ -120,12 +127,20 @@ int osc_bundle_s_concat(long len1, char *bndl1, long len2, char *bndl2, char *bn
 t_osc_array *osc_bundle_array_s_alloc(long len);
 
 t_osc_bundle_array_s *osc_bundle_array_s_alloc(long len);
+void osc_bundle_array_s_free(t_osc_bundle_array_s *ar);
+void osc_bundle_array_s_clear(t_osc_bundle_array_s *ar);
+t_osc_bndl_s *osc_bundle_array_s_get(t_osc_bundle_array_s *ar, long idx);
+long osc_bundle_array_s_getLen(t_osc_bundle_array_s *ar);
+t_osc_bundle_array_s *osc_bundle_array_s_copy(t_osc_bundle_array_s *ar);
+t_osc_err osc_bundle_array_s_resize(t_osc_bundle_array_s *ar, long newlen);
+/*
 #define osc_bundle_array_s_free(ar) osc_array_free((ar))
 #define osc_bundle_array_s_clear(ar) osc_array_clear((ar))
 #define osc_bundle_array_s_get(ar, idx) osc_array_get((ar), (idx))
 #define osc_bundle_array_s_getLen(ar) osc_array_getLen((ar))
 #define osc_bundle_array_s_copy(ar) osc_array_copy((ar))
 #define osc_bundle_array_s_resize(ar, newlen) osc_array_resize((ar), (newlen))
+*/
 
 #ifdef __cplusplus
 }

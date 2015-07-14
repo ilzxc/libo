@@ -95,7 +95,7 @@ char *osc_error_string(t_osc_err err);
  * @param bundle The bundle to be verified.
  * @return An error code or #OSC_ERR_NONE
  */
-t_osc_err osc_error_bundleSanityCheck(int len, const char *bundle);
+t_osc_err osc_error_bundleSanityCheck(int len, char *bundle);
 
 /**
  * Verify that a message is constructed properly.  The lengthe should be encoded in network

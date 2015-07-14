@@ -90,7 +90,8 @@ typedef struct _osc_parser_bndl_list{
 #ifdef __cplusplus
 extern "C"{
 #endif
-t_osc_err osc_parser_parseString(long len, const char *ptr, struct _osc_bundle_u **bndl);
+t_osc_err osc_parser_parseString(long len, char *ptr, struct _osc_bundle_u **bndl);
+struct _osc_bundle_u *osc_parser_parseString_r(long len, char *ptr);
 #ifdef __cplusplus
 }
 #endif
@@ -103,7 +104,7 @@ int osc_parser_lex(YYSTYPE * yylval_param,YYLTYPE * yylloc_param ,yyscan_t yysca
 	return osc_scanner_lex(yylval_param, yylloc_param, yyscanner, buflen, buf);
 }
 
-t_osc_err osc_parser_parseString(long len, const char *ptr, t_osc_bndl_u **bndl)
+t_osc_err osc_parser_parseString(long len, char *ptr, t_osc_bndl_u **bndl)
 {
 	/*
 	t_osc_err e = osc_legacy_parser_parseString(len, ptr, bndl);
@@ -132,6 +133,13 @@ t_osc_err osc_parser_parseString(long len, const char *ptr, t_osc_bndl_u **bndl)
 		return OSC_ERR_PARSER;
 	}
 	return OSC_ERR_NONE;
+}
+
+struct _osc_bundle_u *osc_parser_parseString_r(long len, char *ptr)
+{
+	t_osc_bndl_u *bndl = NULL;
+	osc_parser_parseString(len, ptr, &bndl);
+	return bndl;
 }
 
 void yyerror (YYLTYPE *yylloc, t_osc_bndl_u **bndl, void *scanner, long *buflen, char **buf, char const *e){

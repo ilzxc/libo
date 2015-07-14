@@ -48,12 +48,15 @@ extern "C" {
 */
 typedef struct _osc_message_s t_osc_message_s, t_osc_msg_s;
 
-#include <stdint.h>
-#include "osc_atom_s.h"
-#include "osc_error.h"
 #include "osc_array.h"
-
 typedef t_osc_array t_osc_message_array_s, t_osc_msg_ar_s;
+
+#include <stdint.h>
+#include "osc_error.h"
+#include "osc_message_u.h"
+#include "osc_atom_s.h"
+
+//typedef t_osc_array t_osc_message_array_s, t_osc_msg_ar_s;
 
 /**
    Allocate a #t_osc_msg_s object and initialize it
@@ -176,7 +179,7 @@ void osc_message_s_getArg(t_osc_msg_s *m, int n, t_osc_atom_s **atom);
  */
 t_osc_err osc_message_s_cacheDataOffsets(t_osc_msg_s *m);
 
-t_osc_err osc_message_s_deserialize(t_osc_msg_s *msg, t_osc_msg_u **msg_u);
+t_osc_msg_u *osc_message_s_deserialize(t_osc_msg_s *msg);
 
 /**
    Convert the contents of a #t_osc_msg_s to a string suitable for display.
@@ -186,19 +189,26 @@ t_osc_err osc_message_s_deserialize(t_osc_msg_s *msg, t_osc_msg_u **msg_u);
 The string will be allocated with #osc_mem_alloc and must be freed by the caller using #osc_mem_free
    @return An error or #OSC_ERR_NONE
  */
-OSC_DEPRECATED(t_osc_err osc_message_s_format(t_osc_msg_s *m, long *buflen, char **buf), "use osc_message_s_nformat() instead.");
+long osc_message_s_getFormattedSize(t_osc_msg_s *m);
+char *osc_message_s_format(t_osc_msg_s *m);
 long osc_message_s_nformat(char *buf, long n, t_osc_msg_s *m, int nindent);
 
-OSC_DEPRECATED(t_osc_err osc_message_s_formatArgs(t_osc_msg_s *m, long *buflen, char **buf, int offset), "");
 
 t_osc_message_array_s *osc_message_array_s_alloc(long len);
+void osc_message_array_s_free(t_osc_message_array_s *ar);
+void osc_message_array_s_clear(t_osc_message_array_s *ar);
+t_osc_msg_s *osc_message_array_s_get(t_osc_message_array_s *ar, long idx);
+long osc_message_array_s_getLen(t_osc_message_array_s *ar);
+t_osc_message_array_s *osc_message_array_s_copy(t_osc_message_array_s *ar);
+void osc_message_array_s_resize(t_osc_message_array_s *ar, long newlen);
+/*
 #define osc_message_array_s_free(ar) osc_array_free((ar))
 #define osc_message_array_s_clear(ar) osc_array_clear((ar))
 #define osc_message_array_s_get(ar, idx) osc_array_get((ar), (idx))
 #define osc_message_array_s_getLen(ar) osc_array_getLen((ar))
 #define osc_message_array_s_copy(ar) osc_array_copy((ar))
 #define osc_message_array_s_resize(ar, newlen) osc_array_resize((ar), (newlen))
-
+*/
 
 #ifdef __cplusplus
 }

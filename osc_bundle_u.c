@@ -80,26 +80,11 @@ void osc_bundle_u_clear(t_osc_bndl_u *bndl)
 	bndl->msgtail = NULL;
 }
 
-long osc_bundle_u_getSerializedSize(t_osc_bndl_u *b)
-{
-	// this seems bad, but it probably isn't much less efficient than going through everything
-	// recursively and computing the size.  We could also keep track of it as things
-	// are added to and taken from the bundle, but that seems prone to error.
-	long len = 0;
-	char *bndl = NULL;
-	osc_bundle_u_serialize(b, &len, &bndl);
-	osc_mem_free(bndl);
-	return len;
-}
-
 t_osc_err osc_bundle_u_copy(t_osc_bndl_u **dest, t_osc_bndl_u *src)
 {
-	// this is lazy, but it's also possible that this is faster than a crazy recursive copy
-	long len = 0;
-	char *buf = NULL;
-	osc_bundle_u_serialize(src, &len, &buf);
-	osc_bundle_s_deserialize(len, buf, dest);
-	osc_mem_free(buf);
+	t_osc_bndl_s *bs = osc_bundle_u_serialize(src);
+	*dest = osc_bundle_s_deserialize(osc_bundle_s_getLen(bs), osc_bundle_s_getPtr(bs));
+	osc_bundle_s_deepFree(bs);
 	return OSC_ERR_NONE;
 }
 /*
@@ -146,7 +131,7 @@ t_osc_err osc_bundle_u_getMessagesWithCallback(t_osc_bndl_u *bndl, void (*f)(t_o
 	return OSC_ERR_NONE;
 }
 
-t_osc_err osc_bundle_u_addressExists(t_osc_bndl_u *bndl, const char *address, int fullmatch, int *res)
+t_osc_err osc_bundle_u_addressExists(t_osc_bndl_u *bndl, char *address, int fullmatch, int *res)
 {
 	*res = 0;
 	t_osc_bndl_it_u *it = osc_bndl_it_u_get(bndl);
@@ -174,7 +159,7 @@ t_osc_err osc_bundle_u_addressExists(t_osc_bndl_u *bndl, const char *address, in
 	return OSC_ERR_NONE;
 }
 
-t_osc_err osc_bundle_u_lookupAddress(t_osc_bndl_u *bndl, const char *address, t_osc_array **osc_msg_u_array, int fullmatch)
+t_osc_msg_ar_u *osc_bundle_u_lookupAddress(t_osc_bndl_u *bndl, const char *address, int fullmatch)
 {
 	int matchbuflen = 16, n = 0;
 	//t_osc_msg_u **matches = osc_mem_alloc(matchbuflen * sizeof(t_osc_msg_u *));
@@ -187,7 +172,7 @@ t_osc_err osc_bundle_u_lookupAddress(t_osc_bndl_u *bndl, const char *address, t_
 			//matches = osc_mem_resize(matches, (matchbuflen + 16) * sizeof(t_osc_msg_u *));
 			t_osc_err e = osc_array_resize(ar, matchbuflen + 16);
 			if(e){
-				return e;
+				return NULL;
 			}
 			matchbuflen += 16;
 		}
@@ -209,8 +194,7 @@ t_osc_err osc_bundle_u_lookupAddress(t_osc_bndl_u *bndl, const char *address, t_
 	}
 	osc_bndl_it_u_destroy(it);
 	osc_array_resize(ar, n);
-	*osc_msg_u_array = ar;
-	return OSC_ERR_NONE;
+	return ar;
 }
 
 static t_osc_err osc_bundle_u_addMsg_impl(t_osc_bndl_u *bndl, t_osc_msg_u *msg, int remove_dups)
@@ -511,6 +495,23 @@ t_osc_err osc_bundle_u_intersection(t_osc_bndl_u *bndl1, t_osc_bndl_u *bndl2, t_
 	return OSC_ERR_NONE;
 }
 
+long osc_bundle_u_getSerializedSize(t_osc_bndl_u *b)
+{
+	return osc_bundle_u_nserialize(NULL, 0, b);
+}
+
+t_osc_bndl_s *osc_bundle_u_serialize(t_osc_bndl_u *b)
+{
+	size_t n = osc_bundle_u_nserialize(NULL, 0, b);
+	if(!n){
+		return NULL;
+	}
+	char *buf = osc_mem_alloc(n);
+	osc_bundle_u_nserialize(buf, n, b);
+	t_osc_bndl_s *bs = osc_bundle_s_alloc(n, buf);
+	return bs;
+}
+
 size_t osc_bundle_u_nserialize(char *buf, size_t n, t_osc_bndl_u *b)
 {
 	size_t _n = 0;
@@ -536,25 +537,20 @@ size_t osc_bundle_u_nserialize(char *buf, size_t n, t_osc_bndl_u *b)
 	return _n;
 }
 
-t_osc_err osc_bundle_u_serialize(t_osc_bundle_u *bndl, long *buflen, char **buf)
+long osc_bundle_u_getFormattedSize(t_osc_bndl_u *bndl)
 {
-	size_t n = osc_bundle_u_nserialize(NULL, 0, bndl);
-	*buf = osc_mem_alloc(n);
-	*buflen = osc_bundle_u_nserialize(*buf, n, bndl);
-	return OSC_ERR_NONE;
+	return osc_bundle_u_nformat(NULL, 0, bndl, 0);
 }
 
-t_osc_err osc_bundle_u_format(t_osc_bndl_u *bndl, long *buflen, char **buf)
+char *osc_bundle_u_format(t_osc_bndl_u *bndl)
 {
 	if(!bndl){
-		return OSC_ERR_NOBUNDLE;
+		return NULL;
 	}
-	if(!(*buf)){
-		*buflen = osc_bundle_u_nformat(NULL, 0, bndl, 0) + 1;
-		*buf = osc_mem_alloc(*buflen);
-	}
-	osc_bundle_u_nformat(*buf, *buflen, bndl, 0);
-	return OSC_ERR_NONE;
+	long buflen = osc_bundle_u_nformat(NULL, 0, bndl, 0) + 1;
+	char *buf = osc_mem_alloc(buflen);
+	osc_bundle_u_nformat(buf, buflen, bndl, 0);
+	return buf;
 }
 
 long osc_bundle_u_nformat(char *buf, long n, t_osc_bndl_u *bndl, int nindent)
@@ -585,7 +581,7 @@ long osc_bundle_u_nformat(char *buf, long n, t_osc_bndl_u *bndl, int nindent)
 	return offset;
 }
 
-long osc_bundle_u_formatNestedBndl(char *buf, long n, t_osc_bndl_u *bndl, int nindent)
+long osc_bundle_u_nformatNestedBndl(char *buf, long n, t_osc_bndl_u *bndl, int nindent)
 {
 	if(!bndl || nindent < 1){
 		return 0;
@@ -609,7 +605,37 @@ long osc_bundle_u_formatNestedBndl(char *buf, long n, t_osc_bndl_u *bndl, int ni
 	return offset;
 }
 
-t_osc_array *osc_bundle_array_u_alloc(long len)
+t_osc_bundle_array_u *osc_bundle_array_u_alloc(long len)
 {
 	return osc_array_allocWithSize(len, sizeof(t_osc_bndl_u));
+}
+
+void osc_bundle_array_u_free(t_osc_bundle_array_u *ar)
+{
+	osc_array_free((t_osc_array *)ar);
+}
+
+void osc_bundle_array_u_clear(t_osc_bundle_array_u *ar)
+{
+	osc_array_clear((t_osc_array *)ar);
+}
+
+t_osc_bndl_u *osc_bundle_array_u_get(t_osc_bundle_array_u *ar, long idx)
+{
+	return (t_osc_bndl_u *)osc_array_get((t_osc_array *)ar, idx);
+}
+
+long osc_bundle_array_u_getLen(t_osc_bundle_array_u *ar)
+{
+	return osc_array_getLen((t_osc_array *)ar);
+}
+
+t_osc_bundle_array_u *osc_bundle_array_u_copy(t_osc_bundle_array_u *ar)
+{
+	return (t_osc_bundle_array_u *)osc_array_copy((t_osc_array *)ar);
+}
+
+t_osc_err osc_bundle_array_u_resize(t_osc_bundle_array_u *ar, long newlen)
+{
+	return osc_array_resize((t_osc_array *)ar, newlen);
 }
